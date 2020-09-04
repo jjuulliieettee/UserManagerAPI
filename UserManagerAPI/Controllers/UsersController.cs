@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using UserManagerAPI.Dtos;
 using UserManagerAPI.Exceptions;
@@ -8,6 +9,7 @@ namespace UserManagerAPI.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class UsersController : ControllerBase
     {
         private readonly IUserService _userService;
@@ -18,6 +20,7 @@ namespace UserManagerAPI.Controllers
         }
 
         [HttpGet]
+        [AllowAnonymous]
         public ActionResult<IEnumerable<UserReadDto>> GetAll()
         {
             return Ok( _userService.GetAll() );

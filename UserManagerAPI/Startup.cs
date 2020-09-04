@@ -12,6 +12,9 @@ using UserManagerAPI.Repositories.Interfaces;
 using UserManagerAPI.Services.Interfaces;
 using UserManagerAPI.Repositories;
 using UserManagerAPI.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using UserManagerAPI.Configs;
 
 namespace UserManagerAPI
 {
@@ -34,10 +37,34 @@ namespace UserManagerAPI
                 s.SerializerSettings.ContractResolver = new CamelCasePropertyNamesContractResolver();
             } );
 
+            services.AddScoped<AuthConfigsManager>();
+            ServiceProvider serviceProvider = services.BuildServiceProvider();
+            AuthConfigsManager authConfigsManager = serviceProvider.GetService<AuthConfigsManager>();
+
+            services.AddAuthentication( JwtBearerDefaults.AuthenticationScheme )
+                    .AddJwtBearer( options =>
+                    {
+                        options.RequireHttpsMetadata = false;
+                        options.TokenValidationParameters = new TokenValidationParameters
+                        {
+                            ValidateIssuer = true,
+                            ValidIssuer = authConfigsManager.GetIssuer(),
+
+                            ValidateAudience = true,
+                            ValidAudience = authConfigsManager.GetAudience(),
+                            ValidateLifetime = true,
+
+                            IssuerSigningKey = authConfigsManager.GetSymmetricSecurityKey(),
+                            ValidateIssuerSigningKey = true,
+                        };
+                    } );
+
             services.AddAutoMapper( AppDomain.CurrentDomain.GetAssemblies() );
 
             services.AddScoped<IUserRepository, UserRepository>();
             services.AddScoped<IUserService, UserService>();
+            services.AddScoped<IAuthService, AuthService>();
+            
 
         }
 
@@ -50,6 +77,7 @@ namespace UserManagerAPI
 
             app.UseRouting();
 
+            app.UseAuthentication();
             app.UseAuthorization();
 
             DataSeed.SeedUsers( context );
