@@ -1,14 +1,17 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
+using UserManagerAPI.Data;
+using Newtonsoft.Json.Serialization;
+using AutoMapper;
+using System;
+using UserManagerAPI.Repositories.Interfaces;
+using UserManagerAPI.Services.Interfaces;
+using UserManagerAPI.Repositories;
+using UserManagerAPI.Services;
 
 namespace UserManagerAPI
 {
@@ -21,14 +24,24 @@ namespace UserManagerAPI
 
         public IConfiguration Configuration { get; }
 
-        // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices( IServiceCollection services )
         {
-            services.AddControllers();
+            services.AddDbContext<UserContext>( opt => opt.UseSqlServer
+             ( Configuration.GetConnectionString( "UserManagerApiConnection" ) ).EnableSensitiveDataLogging() ) ;
+
+            services.AddControllers().AddNewtonsoftJson( s =>
+            {
+                s.SerializerSettings.ContractResolver = new CamelCasePropertyNamesContractResolver();
+            } );
+
+            services.AddAutoMapper( AppDomain.CurrentDomain.GetAssemblies() );
+
+            services.AddScoped<IUserRepository, UserRepository>();
+            services.AddScoped<IUserService, UserService>();
+
         }
 
-        // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure( IApplicationBuilder app, IWebHostEnvironment env )
+        public void Configure( IApplicationBuilder app, IWebHostEnvironment env, UserContext context )
         {
             if (env.IsDevelopment())
             {
@@ -38,6 +51,8 @@ namespace UserManagerAPI
             app.UseRouting();
 
             app.UseAuthorization();
+
+            DataSeed.SeedUsers( context );
 
             app.UseEndpoints( endpoints =>
              {
