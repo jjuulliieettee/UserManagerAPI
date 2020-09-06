@@ -28,7 +28,7 @@ namespace UserManagerAPI.Data
                 User user3 =
                 new User
                 {
-                    Username = "kitty",
+                    Username = "batwoman",
                     Name = "Kate Cane",
                     Password = PasswordService.HashPassword( "qwe123**" )
                 };

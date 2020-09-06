@@ -15,6 +15,8 @@ using UserManagerAPI.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using UserManagerAPI.Configs;
+using UserManagerAPI.Hubs;
+using System.Threading.Tasks;
 
 namespace UserManagerAPI
 {
@@ -57,6 +59,20 @@ namespace UserManagerAPI
                             IssuerSigningKey = authConfigsManager.GetSymmetricSecurityKey(),
                             ValidateIssuerSigningKey = true,
                         };
+                        options.Events = new JwtBearerEvents
+                        {
+                            OnMessageReceived = context =>
+                            {
+                                var accessToken = context.Request.Query["access_token"];
+                                var path = context.HttpContext.Request.Path;
+                                if (!string.IsNullOrEmpty( accessToken ) &&
+                                    (path.StartsWithSegments( "/chat" )))
+                                {
+                                    context.Token = accessToken;
+                                }
+                                return Task.CompletedTask;
+                            }
+                        };
                     } );
 
             services.AddAutoMapper( AppDomain.CurrentDomain.GetAssemblies() );
@@ -64,8 +80,15 @@ namespace UserManagerAPI
             services.AddScoped<IUserRepository, UserRepository>();
             services.AddScoped<IUserService, UserService>();
             services.AddScoped<IAuthService, AuthService>();
-            
 
+            services.AddSignalR();
+
+            services.AddCors( options => options.AddPolicy( "CorsPolicy",
+             builder =>
+             {
+                 builder.AllowAnyMethod().AllowAnyHeader()
+                        .WithOrigins( "http://127.0.0.1:5500/websocket.html" );//.AllowCredentials();//AllowAnyOrigin();
+             } ) );
         }
 
         public void Configure( IApplicationBuilder app, IWebHostEnvironment env, UserContext context )
@@ -74,6 +97,8 @@ namespace UserManagerAPI
             {
                 app.UseDeveloperExceptionPage();
             }
+
+            app.UseCors( "CorsPolicy" );
 
             app.UseRouting();
 
@@ -85,6 +110,7 @@ namespace UserManagerAPI
             app.UseEndpoints( endpoints =>
              {
                  endpoints.MapControllers();
+                 endpoints.MapHub<ChatHub>( "/chat");
              } );
         }
     }
